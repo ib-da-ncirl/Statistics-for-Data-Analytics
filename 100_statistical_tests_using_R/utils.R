@@ -130,8 +130,10 @@ hypothesis.get_test_type = function(type=NA) {
 # :param name: Name of character to return
 # :return Named vector for character or NA vector
 unicode_chars = function(name) {
-  chars =        c("\u03bc", "\u03bc\u2080", "H\u2080", "H\u2081", "\u2260",   "\u237a", "\u03c3", "\u03c3\u00b2")
-  names(chars) = c("mu",     "mu0",          "h0",      "h1",      "notequal", "alpha",  "sigma",  "sigma2")
+  chars = c(mu="\u03bc", mu0="\u03bc\u2080", mu1="\u03bc\u2081", 
+            h0="H\u2080", h1="H\u2081", notequal="\u2260", alpha="\u237a", 
+            sigma="\u03c3", sigma2="\u03c3\u00b2",
+            sub0="\u2080", sub1="\u2081", sub2="\u2082")
   return(chars[name])
 }
 
@@ -141,11 +143,15 @@ unicode_chars = function(name) {
 # :return String for phrase or NULL
 gen_phrase = function(name, value=NA) {
   phrase = switch(name,
-    "ho_mu==mu0" = c(unicode_chars("h0"), ": ", unicode_chars("mu"), " = ", unicode_chars("mu0")),
+    "h0_mu==mu0" = c(unicode_chars("h0"), ": ", unicode_chars("mu"), " = ", unicode_chars("mu0")),
     "h1_mu!=mu0" = c(unicode_chars("h1"), ": ", unicode_chars("mu"), " ", unicode_chars("notequal"), " ", unicode_chars("mu0")),
     "h1_mu>mu0" = c(unicode_chars("h1"), ": ", unicode_chars("mu"), " > ", unicode_chars("mu0")),
     "h1_mu<mu0" = c(unicode_chars("h1"), ": ", unicode_chars("mu"), " < ", unicode_chars("mu0")),
-    "alpha==" = c(unicode_chars("alpha"), " = ", value)
+    "alpha==" = c(unicode_chars("alpha"), " = ", value),
+    "h0_mu0==mu1" = c(unicode_chars("h0"), ": ", unicode_chars("mu0"), " = ", unicode_chars("mu1")),
+    "h1_mu0!=mu1" = c(unicode_chars("h1"), ": ", unicode_chars("mu0"), " ", unicode_chars("notequal"), " ", unicode_chars("mu1")),
+    "h1_mu0>mu1" = c(unicode_chars("h1"), ": ", unicode_chars("mu0"), " > ", unicode_chars("mu1")),
+    "h1_mu0<mu1" = c(unicode_chars("h1"), ": ", unicode_chars("mu0"), " < ", unicode_chars("mu1"))
   )
   
   if (is.vector(phrase)) {
@@ -153,6 +159,14 @@ gen_phrase = function(name, value=NA) {
   }
   return(phrase)
 }
+
+# Concatinate the elements with no spaces
+# :param elements: a vextor of the elements to concatinate
+# :return contatinated string
+paste_ns = function(elements) {
+  return(paste0(elements, collapse = ""))
+}
+
 
 # Check common arguments, and calculate missing arguments where possible
 # :param data: vector of sample data

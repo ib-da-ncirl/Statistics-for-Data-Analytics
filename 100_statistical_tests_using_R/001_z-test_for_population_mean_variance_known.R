@@ -1,5 +1,6 @@
 source("z_utils.R")
 source('hypothesis.R')
+source('datadef.R')
 
 # Test 1 in '100 Statistical Tests'  (pg 5 & 21)
 # Z-test for a population mean (variance known)
@@ -8,94 +9,72 @@ source('hypothesis.R')
 # A vector argument of the test data, or the xbar & n arguments is required
 # :param mu0: population mean
 # :param sigma2: population variance
-# :param data: vector of sample data
-# :param xbar: sample mean
-# :param n: sample size
+# :param sampledef: sample data
 # :return z-value
-z.calculate = function(mu0, sigma2, data=NA, xbar=NA, n=NA) {
+z.calculate = function(mu0, sigma2, sampledef) {
   
-  fargs = check_arguments(data=data, xbar=xbar, n=n, mu0=mu0, sigma2=sigma2, sigma=NA)
-  xbar = fargs['xbar']
-  n = fargs['n']
-
-  isv = is.vector(data, mode='numeric')
-  isx_n = is.numeric(xbar) & is.numeric(n)
-  if (!(isv & !isx_n) & !(!isv & isx_n) & !(isv & isx_n)) {
-    stop(paste0(c("Invalid arguments: either 'data', or 'xbar'/'n' combination is required"), collapse = " "))
+  if (!sampledef$isvalid_mean_n()) {
+    stop(paste0(c("Invalid 'sampledef' argument: ", sampledef$toString()), collapse = " "))
   }
+
   # z-value = (xbar - mu0) / sqrt(variance / n)
-  zvalue = (xbar - mu0) / (sqrt(sigma2 / n))
-  names(zvalue) = c("z-value")  # give zvalue its correct name, (inherits 'xbar' ??)
+  zvalue = (sampledef$mean - mu0) / (sqrt(sigma2 / sampledef$n))
+  names(zvalue) = c("z-value")  # give zvalue its correct name
   dbg_print("z-value", unname(zvalue))
   return (zvalue)
 }
 
 # Calculate p-value
 # A vector argument of the test data, or the xbar & n arguments is required
-# :param type: hypothesis test type; Two='t', Lower='l', Upper='u'
 # :param mu0: population mean
 # :param sigma2: population variance
-# :param data: sample data
-# :param xbar: sample mean
-# :param n: sample size
+# :param sampledef: sample data
+# :param type: hypothesis test type; Two='t', Lower='l', Upper='u'
 # :return p-value or Inf if error
-z.pvalue = function(mu0, sigma2, type=NA, data=NA, xbar=NA, n=NA) {
-
+z.pvalue = function(mu0, sigma2, sampledef, type=NA) {
+  
   type = hypothesis.get_test_type(type)
   
   if (is.na(type)) {
     pvalue = Inf
   } else {
     
-    fargs = check_arguments(data=data, xbar=xbar, n=n, mu0=mu0, sigma2=sigma2, sigma=NA)
-    xbar = fargs['xbar']
-    n = fargs['n']
-    mu0 = fargs['mu0']
-    sigma2 = fargs['sigma2']
-    df = fargs['df']
-
-    zvalue = z.calculate(mu0, sigma2, data=data, xbar=xbar, n=n)
-
-    if (hypothesis.isTwoTail(type)) {
-      # H0 : sample mean == population mean
-      # Ha : sample mean != population mean
-      
-      # doing it this way (i.e. using 'abs(z)') means we don't have to worry about the sign of z
-      # pnorm(abs(z)) : probability of z-value, i.e. negative infinity to z-value
-      # 1-pnorm(abs(z)) : tail we're looking for, i.e z-value to infinity 
-      # 2*(1-pnorm(abs(z))) : two tails, since it a mirror image
-      pvalue = 2*(1-pnorm(abs(zvalue), lower.tail=TRUE))
-      
-    } else if (hypothesis.isLowerTail(type)) {
-      # H0 : sample mean == population mean
-      # Ha : sample mean < population mean
-      pvalue = pnorm(zvalue, lower.tail=TRUE)
-      
-    } else {
-      # H0 : sample mean == population mean
-      # Ha : sample mean > population mean)
-      pvalue = pnorm(zvalue, lower.tail=FALSE)
-      
+    if (!sampledef$isvalid_mean_n()) {
+      stop(paste0(c("Invalid 'sampledef' argument: ", sampledef$toString()), collapse = " "))
     }
-    names(pvalue) = c("p-value")  # give pvalue its correct name
+    
+    zvalue = z.calculate(mu0, sigma2, sampledef)
+    
+    pvalue = z.pvalue_from_z(zvalue, type)
   }
   dbg_print("p-value", unname(pvalue))
-
+  
   return (pvalue)
 }
 
 # Do a hypothesis test
 # :param type: hypothesis test type; Two='t', Lower='l', Upper='u'
-# :param xbar: sample mean
-# :param n: sample size
 # :param mu0: population mean
 # :param sigma2: population variance
-# :param sigma: population standard deviation
+# :param sampledef: sample data
 # :param alpha: significance level
-z.hypthosis_test = function(type=NA, xbar=NA, n=NA, mu0=NA, sigma2=NA, sigma=NA, alpha=NA) {
+z.hypthosis_test = function(type=NA, mu0=NA, sigma2=NA, sampledef=NULL, alpha=NA) {
   reject = NA
 
-  input = hypthosis_test_input(hypthosis_test.z.mask, type, xbar, n, mu0, sigma2, sigma, alpha)
+  if (is.null(sampledef)) {
+    xbar=NA
+    s2=NA
+    s=NA
+    n=NA
+  } else {
+    xbar=sampledef$mean
+    s2=sampledef$var
+    s=sampledef$stddev
+    n=sampledef$n
+  }
+  input = hypthosis_test_input(hypthosis_test.z.mask, type, 
+                               xbar, s2, s, n, 
+                               mu0, sigma2, sigma, alpha)
   if (is.vector(input)) {
     type = hypothesis.get_test_type(input['type'])
     if (!is.na(type)) {
@@ -105,41 +84,11 @@ z.hypthosis_test = function(type=NA, xbar=NA, n=NA, mu0=NA, sigma2=NA, sigma=NA,
       sigma2 = input['sigma2']
       sigma = input['sigma']
       alpha = input['alpha']
-  
-      if (hypothesis.isTwoTail(type)) {
-        # Ha : sample mean != population mean
-        h1_phrase = "h1_mu!=mu0"
-        name = "Two tail"
-  
-      } else if (hypothesis.isLowerTail(type)) {
-        # Ha : sample mean < population mean
-        h1_phrase = "h1_mu<mu0"
-        name = "Lower tail"
-        
-      } else if (hypothesis.isUpperTail(type)) {
-        # Ha : sample mean > population mean
-        h1_phrase = "h1_mu>mu0"
-        name = "Upper tail"
-        
-      }
-      # H0 : sample mean == population mean
-      print(gen_phrase("ho_mu==mu0"))
-      print(gen_phrase(h1_phrase))
       
-      pvalue = z.pvalue(mu0, sigma2, type=type, data=NA, xbar=xbar, n=n)
+      sample = datadef(mean=xbar, n=n)
+      pvalue = z.pvalue(mu0, sigma2, sample, type=type)
       
-      reject = p.rejectH0(alpha, pvalue)
-      
-      print(paste(name, "z-value result", pvalue, sep = " "))
-      print(paste("Probability of", unicode_chars("h0"), "=", paste(round((pvalue*100), 3), "%", sep=""), sep = " "))
-      conclusion = paste("Result is statistically ", reject['strength'], ",", sep = "")
-      alpha_str = paste("at", gen_phrase("alpha==", alpha), sep = " ")
-      if (reject['reject']) {
-        h0_str = paste(unicode_chars("h0"), "rejected", sep = " ")
-      } else {
-        h0_str = paste(unicode_chars("h0"), "not rejected", sep = " ")
-      }
-      print(paste(conclusion, h0_str, alpha_str, sep = " "))
+      reject = hypthosis_test.do(type, pvalue, alpha, h0=c('mu', 'mu0'))
     }
   }
   return(reject)
@@ -152,7 +101,8 @@ z.hypthosis_test = function(type=NA, xbar=NA, n=NA, mu0=NA, sigma2=NA, sigma=NA,
 # :param sigma2: population variance
 # :param alpha: significance level
 z.hypthosis_test_sample = function(data, type=NA, mu0=NA, sigma2=NA, alpha=NA) {
-  z.hypthosis_test(type, xbar=mean(data), n=length(data), mu0=mu0, sigma2=sigma2, alpha=alpha)
+  sampledef = datadef(data=data)
+  z.hypthosis_test(type, mu0=mu0, sigma2=sigma2, sampledef, alpha=alpha)
 }
 
 # Main function to run tests
@@ -227,8 +177,9 @@ z_test_001 = function() {
       } else {
         arguments = rtutor_ltail
       }
-      z.hypthosis_test(type=type, xbar=arguments['xbar'], n=arguments['n'],
-                     mu0=arguments['mu0'], sigma2=arguments['sigma2'], sigma=NA, alpha=arguments['alpha'])
+      sampledef = datadef(mean=arguments['xbar'], n=arguments['n'])
+      z.hypthosis_test(type=type, mu0=arguments['mu0'], sigma2=arguments['sigma2'], 
+                       sampledef=sampledef, alpha=arguments['alpha'])
       
     } else if (sel == 7) {
       z.hypthosis_test()

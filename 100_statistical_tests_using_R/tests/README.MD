@@ -17,7 +17,8 @@ The following is the procedure to run unit tests for this project.
 | Script  | Test script | Description |
 | ------- | ----------- | ----------- |
 | 001_z-test_for_population_mean_variance_known.R  | test_001_z-test.R  | z-test for population mean where variance known  |
-| 007_t-test_for_population_mean_variance_unknown.R  | test_007_t-test.R  | t-test for population mean where variance unknown  |
+| 003_z-test_for_two_population_mean_variance_known.R  | test_003_z-test.R  | z-test for population mean where variance known  |
+| 007_t-test_for_population_mean_variance_unknown.R  | test_007_t-test.R  | z-test for two population means (variances known and unequal)  |
 | z_utils.R | test_z_utils.R  | z-value related functions  |
 | t_utils.R | test_t_utils.R  | t-value related functions  |
 | utils.R   |                 | Various utility functions  |

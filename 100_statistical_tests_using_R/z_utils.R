@@ -95,3 +95,43 @@ z.get_critical_values = function(alpha, type=hypothesis.twoTail, rounding=3) {
   return(cv)
 }  
 
+# Calculate p-value
+# :param zvalue: z-value
+# :param type: hypothesis test type; Two='t', Lower='l', Upper='u'
+# :return p-value or Inf if error
+z.pvalue_from_z = function(zvalue, type=NA) {
+  
+  type = hypothesis.get_test_type(type)
+  
+  if (is.na(type)) {
+    pvalue = Inf
+  } else {
+    
+    if (hypothesis.isTwoTail(type)) {
+      # H0 : sample mean == population mean
+      # Ha : sample mean != population mean
+      
+      # doing it this way (i.e. using 'abs(z)') means we don't have to worry about the sign of z
+      # pnorm(abs(z)) : probability of z-value, i.e. negative infinity to z-value
+      # 1-pnorm(abs(z)) : tail we're looking for, i.e z-value to infinity 
+      # 2*(1-pnorm(abs(z))) : two tails, since it a mirror image
+      pvalue = 2*(1-pnorm(abs(zvalue), lower.tail=TRUE))
+      
+    } else if (hypothesis.isLowerTail(type)) {
+      # H0 : sample mean == population mean
+      # Ha : sample mean < population mean
+      pvalue = pnorm(zvalue, lower.tail=TRUE)
+      
+    } else {
+      # H0 : sample mean == population mean
+      # Ha : sample mean > population mean)
+      pvalue = pnorm(zvalue, lower.tail=FALSE)
+      
+    }
+    names(pvalue) = c("p-value")  # give pvalue its correct name
+  }
+  dbg_print("p-value", unname(pvalue))
+  
+  return (pvalue)
+}
+

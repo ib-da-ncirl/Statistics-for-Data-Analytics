@@ -117,7 +117,8 @@ t.pvalue = function(mu0, type=NA, data=NA, xbar=NA, n=NA, sigma=NA, df=NA, alpha
 t.hypthosis_test = function(type=NA, xbar=NA, n=NA, mu0=NA, sigma2=NA, sigma=NA, alpha=NA) {
   reject = NA
 
-  input = hypthosis_test_input(hypthosis_test.t.mask, type, xbar, n, mu0, sigma2, sigma, alpha)
+  input = hypthosis_test_input(hypthosis_test.t.mask, type=type, xbar=xbar, n=n, 
+                               mu0=mu0, sigma2=sigma2, sigma=sigma, alpha=alpha)
   if (is.vector(input)) {
     type = hypothesis.get_test_type(input['type'])
     if (!is.na(type)) {
@@ -128,41 +129,10 @@ t.hypthosis_test = function(type=NA, xbar=NA, n=NA, mu0=NA, sigma2=NA, sigma=NA,
       sigma2 = input['sigma2']
       sigma = input['sigma']
       alpha = input['alpha']
-  
-      if (hypothesis.isTwoTail(type)) {
-        # Ha : sample mean != population mean
-        h1_phrase = "h1_mu!=mu0"
-        name = "Two tail"
-  
-      } else if (hypothesis.isLowerTail(type)) {
-        # Ha : sample mean < population mean
-        h1_phrase = "h1_mu<mu0"
-        name = "Lower tail"
-        
-      } else if (hypothesis.isUpperTail(type)) {
-        # Ha : sample mean > population mean
-        h1_phrase = "h1_mu>mu0"
-        name = "Upper tail"
-        
-      }
-      # H0 : sample mean == population mean
-      print(gen_phrase("ho_mu==mu0"))
-      print(gen_phrase(h1_phrase))
       
       pvalue = t.pvalue(mu0, sigma=sigma, type=type, data=NA, xbar=xbar, n=n)
       
-      reject = p.rejectH0(alpha, pvalue)
-      
-      print(paste(name, "t-value result", pvalue, sep = " "))
-      print(paste("Probability of", unicode_chars("h0"), "=", paste(round((pvalue*100), 3), "%", sep=""), sep = " "))
-      conclusion = paste("Result is statistically ", reject['strength'], ",", sep = "")
-      alpha_str = paste("at", gen_phrase("alpha==", alpha), sep = " ")
-      if (reject['reject']) {
-        h0_str = paste(unicode_chars("h0"), "rejected", sep = " ")
-      } else {
-        h0_str = paste(unicode_chars("h0"), "not rejected", sep = " ")
-      }
-      print(paste(conclusion, h0_str, alpha_str, sep = " "))
+      reject = hypthosis_test.do(type, pvalue, alpha, h0=c('mu', 'mu0'))
     }
   }
   return(reject)
